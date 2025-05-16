@@ -1,0 +1,52 @@
+# Dependencies
+../../node_modules
+.pnpm-store
+
+# Build outputs
+out
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env*
+!.env
+
+# Misc
+.DS_Store
+*.pem
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Testing
+coverage
+.nyc_output
+
+# Version control
+.git
+.github
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# SQLite databases
+*.sqlite-journal
+
+
+# Other
+CLAUDE.md
+README.md
+LICENSE

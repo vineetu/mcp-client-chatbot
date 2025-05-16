@@ -1,0 +1,19 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres-db
+spec:
+  instances: 1
+  # Using a simple storage configuration
+  storage:
+    size: 1Gi
+  # Basic PostgreSQL configuration
+  postgresql:
+    parameters:
+      shared_buffers: 256MB
+      max_connections: "100"
+  # Create a simple database and user
+  bootstrap:
+    initdb:
+      database: app
+      owner: app-user

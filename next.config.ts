@@ -5,6 +5,7 @@ export default (phase: string) => {
     process.env.MCP_NO_INITIAL = "true";
   }
   const nextConfig: NextConfig = {
+    output: "standalone",
     serverExternalPackages: ["@libsql/client"],
     cleanDistDir: true,
     devIndicators: {

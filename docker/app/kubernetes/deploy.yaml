@@ -1,0 +1,75 @@
+# mcp-client-chatbot.yaml
+# -----------------------
+# Deployment + Service in one file
+# Adjust the image name / tag as you need.
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-client-chatbot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-client-chatbot
+  template:
+    metadata:
+      labels:
+        app: mcp-client-chatbot
+    spec:
+      # make mounted volumes writable by UID 1001 (nextjs)
+      securityContext:
+        fsGroup: 1001
+      initContainers:
+        - name: db-migrate
+          image: mcp-client-chatbot:latest       # same image
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: POSTGRES_URL
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-db-app
+                  key: uri
+            - name: USE_FILE_SYSTEM_DB
+              value: "false"
+          command: ["sh","-c","pnpm db:migrate"]
+      containers:
+        - name: mcp-client-chatbot
+          image: mcp-client-chatbot:latest        # ← your image
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000                 # app listens on 3000
+          envFrom:
+            - secretRef:
+                name: mcp-client-env
+          env:
+            - name: POSTGRES_URL          # what the app and migrations expect
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-db-app   # CNPG-generated secret
+                  key: uri                # the full connection string
+            - name: USE_FILE_SYSTEM_DB
+              value: "false"
+#            - name: USE_FILE_SYSTEM_DB            Use this for testing without postgres
+#              value: "true"
+#            - name: FILEBASE_URL
+#              value: "file:/app/data/db.sqlite"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-client-chatbot-svc
+spec:
+  type: LoadBalancer             # or NodePort / ClusterIP as required
+  selector:
+    app: mcp-client-chatbot
+  ports:
+    - name: http
+      port: 8080                 # external port
+      targetPort: 3000           # container port
+      protocol: TCP
+    - name: https
+      port: 443
+      targetPort: 3000
+      protocol: TCP
