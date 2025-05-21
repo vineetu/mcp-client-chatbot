@@ -11,7 +11,7 @@ WORKDIR /app
 
 # --- choose one database path ------------------------------------
 ENV USE_FILE_SYSTEM_DB=true \
-  FILEBASE_URL=file:/app/data/db.sqlite     
+  FILEBASE_URL=file:/app/data/db.sqlite
 #   POSTGRES_URL='postgres://user:pw@host:5432/db'  # (if you prefer PG)
 # -----------------------------------------------------------------
 RUN mkdir -p /app/data
@@ -30,12 +30,19 @@ RUN \
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
+
+# --- choose one database path ------------------------------------
+ENV USE_FILE_SYSTEM_DB=true \
+  FILEBASE_URL=file:/app/data/db.sqlite
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY ../.. .
+
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
 # Uncomment the following line in case you want to disable telemetry during the build.
 # ENV NEXT_TELEMETRY_DISABLED=1
+COPY ../../node_modules/local.db /app/data/db.sqlite
 RUN \
   if [ -f yarn.lock ]; then yarn run build; \
   elif [ -f package-lock.json ]; then npm run build; \
@@ -49,7 +56,9 @@ WORKDIR /app
 
 
 # 1.  keep the DB env-vars at runtime
-ENV USE_FILE_SYSTEM_DB=false
+ENV USE_FILE_SYSTEM_DB=true \
+  FILEBASE_URL=file:/app/data/db.sqlite
+
 # 2.  make sure the directory exists (not strictly required but tidy)
 RUN mkdir -p /app/data
 
