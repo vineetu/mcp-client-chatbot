@@ -27,7 +27,6 @@ import {
 import { errorIf, safe } from "ts-safe";
 
 import { auth } from "../auth/auth";
-import { redirect } from "next/navigation";
 
 import {
   appendAnnotations,
@@ -45,8 +44,6 @@ import {
 } from "./helper";
 import { generateTitleFromUserMessageAction } from "./actions";
 
-export const maxDuration = 120;
-
 export async function POST(request: Request) {
   try {
     const json = await request.json();
@@ -54,7 +51,7 @@ export async function POST(request: Request) {
     const session = await auth();
 
     if (!session?.user.id) {
-      return redirect("/login");
+      return new Response("Unauthorized", { status: 401 });
     }
 
     const {
@@ -108,20 +105,25 @@ export async function POST(request: Request) {
     const tools = safe(mcpTools)
       .map(errorIf(() => !isToolCallAllowed && "Not allowed"))
       .map((tools) => {
+        // filter tools by mentions
         if (requiredToolsAnnotations.length) {
           return filterToolsByMentions(tools, requiredToolsAnnotations);
         }
-        return {
-          ...getAllowedDefaultToolkit(allowedAppDefaultToolkit),
-          ...filterToolsByAllowedMCPServers(tools, allowedMcpServers),
-        };
+        // filter tools by allowed mcp servers
+        return filterToolsByAllowedMCPServers(tools, allowedMcpServers);
       })
+      // filter tools by tool choice
       .map((tools) => {
         if (toolChoice == "manual") {
           return excludeToolExecution(tools);
         }
         return tools;
       })
+      // add allowed default toolkit
+      .map((tools) => ({
+        ...getAllowedDefaultToolkit(allowedAppDefaultToolkit),
+        ...tools,
+      }))
       .orElse(undefined);
 
     const messages: Message[] = isLastMessageUserMessage
@@ -220,6 +222,6 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     logger.error(error);
-    return redirect("/login");
+    return new Response(error.message, { status: 500 });
   }
 }

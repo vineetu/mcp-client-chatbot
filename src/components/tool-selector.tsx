@@ -7,11 +7,13 @@ import { cn } from "lib/utils";
 import {
   ChartColumn,
   ChevronRight,
+  Loader,
   Package,
   Plus,
   Wrench,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import { PropsWithChildren, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import useSWR from "swr";
@@ -43,7 +45,7 @@ import { Input } from "ui/input";
 import { MCPIcon } from "ui/mcp-icon";
 
 import { handleErrorWithToast } from "ui/shared-toast";
-import { Skeleton } from "ui/skeleton";
+
 import { Switch } from "ui/switch";
 import { useShallow } from "zustand/shallow";
 
@@ -68,15 +70,33 @@ export function ToolSelector({
   align,
   side,
 }: PropsWithChildren<ToolSelectorProps>) {
+  const [appStoreMutate, toolChoice] = appStore(
+    useShallow((state) => [state.mutate, state.toolChoice]),
+  );
+  const { isLoading } = useSWR("mcp-list", selectMcpClientsAction, {
+    refreshInterval: 1000 * 60 * 1,
+    fallbackData: [],
+    onError: handleErrorWithToast,
+    onSuccess: (data) => {
+      appStoreMutate({ mcpList: data });
+    },
+  });
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         {children ?? (
           <Button
             variant={"outline"}
-            className="rounded-full bg-secondary font-semibold"
+            className={cn(
+              "rounded-full font-semibold bg-secondary",
+              toolChoice == "none" && "text-muted-foreground bg-transparent",
+            )}
           >
-            <Wrench className="size-3.5 fill-muted-foreground" />
+            {isLoading ? (
+              <Loader className="size-3.5 animate-spin" />
+            ) : (
+              <Wrench className="size-3.5" />
+            )}
             Tools
           </Button>
         )}
@@ -270,21 +290,12 @@ function ToolPresets() {
 }
 
 function McpServerSelector() {
-  const [appStoreMutate, allowedMcpServers] = appStore(
-    useShallow((state) => [state.mutate, state.allowedMcpServers]),
-  );
-
-  const { data: mcpServerList, isLoading } = useSWR(
-    "mcp-list",
-    selectMcpClientsAction,
-    {
-      refreshInterval: 1000 * 60 * 1,
-      fallbackData: [],
-      onError: handleErrorWithToast,
-      onSuccess: (data) => {
-        appStoreMutate({ mcpList: data });
-      },
-    },
+  const [appStoreMutate, allowedMcpServers, mcpServerList] = appStore(
+    useShallow((state) => [
+      state.mutate,
+      state.allowedMcpServers,
+      state.mcpList,
+    ]),
   );
 
   const selectedMcpServerList = useMemo(() => {
@@ -332,15 +343,17 @@ function McpServerSelector() {
   );
   return (
     <DropdownMenuGroup>
-      {isLoading ? (
-        <div className="flex flex-col gap-2 px-2">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <Skeleton key={i} className="h-4 w-full" />
-          ))}
-        </div>
-      ) : selectedMcpServerList.length === 0 ? (
-        <div className="text-sm text-muted-foreground w-full h-full flex items-center justify-center py-6">
-          No MCP servers found.
+      {!selectedMcpServerList.length ? (
+        <div className="text-sm text-muted-foreground w-full h-full flex flex-col items-center justify-center py-6">
+          <div>No MCP servers detected.</div>
+          <Link href="/mcp">
+            <Button
+              variant={"ghost"}
+              className="mt-2 text-primary flex items-center gap-1"
+            >
+              Add a server <ChevronRight className="size-4" />
+            </Button>
+          </Link>
         </div>
       ) : (
         selectedMcpServerList.map((server) => (
@@ -353,8 +366,8 @@ function McpServerSelector() {
               icon={
                 <div className="flex items-center gap-2 ml-auto">
                   {server.tools.filter((t) => t.checked).length > 0 ? (
-                    <span className="text-xs text-muted-foreground font-normal">
-                      {server.tools.filter((t) => t.checked).length} tools
+                    <span className="w-5 h-5 items-center justify-center flex text-[8px] text-blue-500 font-normal rounded-full border border-border/40 bg-blue-500/5">
+                      {server.tools.filter((t) => t.checked).length}
                     </span>
                   ) : null}
 
@@ -369,11 +382,11 @@ function McpServerSelector() {
                 );
               }}
             >
-              <div className="flex items-center justify-center p-1 rounded bg-input border">
+              <div className="flex items-center justify-center p-1 rounded bg-input/40 border">
                 <MCPIcon className="fill-foreground size-2.5" />
               </div>
 
-              <span className={cn("truncate", !server.checked && "opacity-40")}>
+              <span className={cn("truncate", !server.checked && "opacity-30")}>
                 {server.serverName}
               </span>
               {Boolean(server.error) ? (
